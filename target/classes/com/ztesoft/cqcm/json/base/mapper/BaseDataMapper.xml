@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ztesoft.cqcm.json.base.mapper.BaseDataMapper">
+	
+	<!-- 测试方法 -->
+	<select id="test" parameterType="map" resultType="java.util.Map">
+		select * from CHANNEL_FLOW_STAT where ID=1
+	</select>
+	
+	<!-- 当前人次及滞留人次 -->
+	<select id="CURRENT_RESIDENT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select (select  sum(user_count) current_RESIDENT_user_count from CHANNEL_CURRENT_RESIDENT t  where t.RESIDENT_LEVEL>='I' 
+			and t.RESIDENT_LEVEL<='T'  and t.CHANNEL_ID in (${channel_id})   and  t.OP_TIME=(select max( OP_TIME) from CHANNEL_CURRENT_RESIDENT) ) as current_RESIDENT_user_count, 
+			(select   sum(PEOPLE_COUNT) CHANNEL_FLOW_CURRENT_total  from  CHANNEL_FLOW_CURRENT   t where  t.OP_TIME=(select max( OP_TIME) from CHANNEL_FLOW_CURRENT) 
+			and t.CHANNEL_ID in (${channel_id})  ) as CHANNEL_FLOW_CURRENT_count
+			
+		]]>
+	</select>
+	
+	
+	<!-- 当前人次滞留人次折线图 历史  -->
+	<select id="CURRENT_RESIDENT_LINECHART_HISTORY" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select CURRENT_RESIDENT_user_count,t.CHANNEL_ID ,
+			t.PEOPLE_COUNT  CURRENT_PEOPLE_COUNT , 
+			substr(s.OP_TIME::text,0,13) OP_TIME from 
+			(select  sum(s.user_count::integer) CURRENT_RESIDENT_user_count,
+			s.CHANNEL_ID  CHANNEL_ID ,s.OP_TIME OP_TIME  from  CHANNEL_CURRENT_RESIDENT  s 
+			 where s.resident_level>='I'  and  s.resident_level<='T' and s.CHANNEL_ID 
+			 in (${channel_id}) group by  s.CHANNEL_ID ,s.OP_TIME ) s,CHANNEL_FLOW_STAT t  where t.OP_TIME::text=s.OP_TIME::text and s.CHANNEL_ID=t.CHANNEL_ID order by OP_TIME
+		]]>
+	</select>
+	
+	<!-- 按15分钟一次统计折线图 -->
+	<select id="CURRENT_RESIDENT_LINECHART" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+		select CURRENT_RESIDENT_user_count,t.CHANNEL_ID ,t.PEOPLE_COUNT  CURRENT_PEOPLE_COUNT , substr(s.OP_TIME::text,0,13) OP_TIME from (select  sum(s.user_count::integer) CURRENT_RESIDENT_user_count,s.CHANNEL_ID  CHANNEL_ID ,s.OP_TIME OP_TIME  from  CHANNEL_CURRENT_RESIDENT  s  where s.resident_level>='I'  and  s.resident_level<='T' and s.CHANNEL_ID in (${channel_id})  and   substr(s.OP_TIME::text,0,13)>=to_char(now()-interval  '1 DAY','YYYYMMDDHHMM')
+		 group by  s.CHANNEL_ID ,s.OP_TIME ) s,CHANNEL_FLOW_STAT t  where t.OP_TIME::text=
+		 s.OP_TIME::text and s.CHANNEL_ID=t.CHANNEL_ID order by s.OP_TIME
+		]]>
+	</select>
+	
+	<!-- 滞留人次分布 -->
+	<select id="DELAY_DISTRIBUTED" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select   bt_le_2 ,(bt_le_2*1.0/bt_total) "bt_le_2_per" ,
+			bt_2_4  ,(bt_2_4*1.0/bt_total) "bt_2_4_per",
+			bt_4_8  , (bt_4_8*1.0/bt_total) "bt_4_8_per" ,
+			bt_8_24 ,(bt_8_24*1.0/bt_total)  "bt_8_24_per" ,
+			bt_eg_24  ,(bt_eg_24*1.0/bt_total)  "bt_eg_24_per"
+			from 
+			(
+			select  sum(CASE WHEN t.RESIDENT_LEVEL <='H' THEN  user_count   END ) as bt_le_2  ,
+			sum(CASE WHEN t.RESIDENT_LEVEL = 'I'   OR  t.RESIDENT_LEVEL ='J' THEN  user_count   END ) as bt_2_4  ,
+			sum( CASE WHEN  t.RESIDENT_LEVEL  >= 'K'   and   t.RESIDENT_LEVEL <='N' THEN  user_count   END)   as bt_4_8 ,
+			sum( CASE WHEN  t.RESIDENT_LEVEL >= 'O'   and  t.RESIDENT_LEVEL <='T' THEN   user_count  END)  as bt_8_24  ,
+			sum( CASE WHEN  t.RESIDENT_LEVEL >= 'U'    THEN   user_count  END)  as bt_eg_24  ,
+			sum( user_count)  as bt_total  ,
+			t.OP_TIME date_
+			from CHANNEL_CURRENT_RESIDENT t  where   t.CHANNEL_ID in (${channel_id})   and t.OP_TIME=(select max( OP_TIME) from CHANNEL_CURRENT_RESIDENT) group by date_) r 
+			]]>
+	</select>
+	
+	<!-- 滞留人次南丁格尔玫瑰图 -->
+	<select id="DELAY_DISTRIBUTED_PIE" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+		select   t.RESIDENT_LEVEL ,sum(user_count) as sum_char from CHANNEL_CURRENT_RESIDENT  t  where 1=1 and  t.CHANNEL_ID   in (${channel_id})   and t.OP_TIME=(select max( OP_TIME) from CHANNEL_CURRENT_RESIDENT) group by  t.RESIDENT_LEVEL
+		]]>
+	</select>
+	
+	<!-- 滞留人次来源 -->
+	<select id="DELAY_SOURCE" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select province_name,per,total_coun from (
+			SELECT i.PROVINCE_NAME, round(i.total_coun*100.0/t.TOTAL_CHANNEL_TOTAL,2) AS per,i.total_coun   FROM (
+			select sum(ROAMIN_CNT) as total_coun ,CHANNEL_ID, s.PROVINCE_NAME  from EMPM_CHANNEL_ROAMIN_SOURCE s  
+			where  s.OP_TIME=(select max( OP_TIME) from EMPM_CHANNEL_ROAMIN_SOURCE) 
+			and s.CHANNEL_ID ='${channel_id}' group by s.CHANNEL_ID ,s.PROVINCE_NAME order by  total_coun DESC  limit 4 
+			) i,(select sum(ROAMIN_CNT) as TOTAL_CHANNEL_TOTAL  from EMPM_CHANNEL_ROAMIN_SOURCE s  
+			where  s.OP_TIME=(select max( OP_TIME) from EMPM_CHANNEL_ROAMIN_SOURCE) 
+			and s.CHANNEL_ID ='${channel_id}'  
+			) t
+			union
+			select '其他' as PROVINCE_NAME  ,round(((TOTAL_CHANNEL_TOTAL-sum(total_couns)))*100.0/(TOTAL_CHANNEL_TOTAL*1.0),2)  as per ,(TOTAL_CHANNEL_TOTAL-sum(total_couns))  as total_coun from (
+			select sum(ROAMIN_CNT) as total_couns ,CHANNEL_ID, s.PROVINCE_NAME  from EMPM_CHANNEL_ROAMIN_SOURCE s  
+			where  s.OP_TIME=(select max( OP_TIME) from EMPM_CHANNEL_ROAMIN_SOURCE) 
+			and s.CHANNEL_ID ='${channel_id}' group by s.CHANNEL_ID ,s.PROVINCE_NAME order by  total_couns DESC  limit 4 
+			)  r,(select sum(ROAMIN_CNT)*1 as TOTAL_CHANNEL_TOTAL  from EMPM_CHANNEL_ROAMIN_SOURCE s  
+			where  s.OP_TIME=(select max( OP_TIME) from EMPM_CHANNEL_ROAMIN_SOURCE) 
+			and s.CHANNEL_ID ='${channel_id}' )  w   group by TOTAL_CHANNEL_TOTAL 
+			)  s  order by per desc
+		]]>
+	</select>
+	
+	<!-- 昨日最高人次  暂时未用  -->
+	<select id="YESTERDAY_MAX_PERSON_NUM" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			  select sum(t.PEOPLE_COUNT) PEOPLE_COUNT ,substr(CAST (t.OP_TIME AS text), 0, 8) as OP_TIMES  from  CHANNEL_FLOW_STAT  t where 1=1   and t.CHANNEL_ID in (${channel_id}) and substr(CAST (t.OP_TIME AS text), 0, 8)=to_char(now()-interval  '1 DAY','YYYYMMDD')
+				and   t.OP_TIME=(select max( OP_TIME) from CHANNEL_FLOW_STAT) group by  OP_TIMES 
+		]]>
+	</select>
+	
+	<!-- 本月最高人次    暂时未用 -->
+	<select id="MONTH_MAX_PERSON_NUM" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			 select  MAX_PEPOLE_COUNT as MAX_PEOPLE_COUNT ,MAX_OP_TIME from  CHANNEL_FLOW_CURRENT t where 1=1 
+				 and t.CHANNEL_ID in (${channel_id})
+				 and   substr(CAST (t.OP_TIME AS text), 0, 6)=to_char(now()-interval  '1 MONTH ','YYYYMM')
+		]]>
+	</select>
+	
+	
+	
+	<!-- #昨日全天累计人数 -->
+	<select id="YESTERDAY_MAX_PEOPLE_COUNT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+	    	select  c.CHANNEL_ID,sum(ACC_USER_COUNT) ACC_USER_COUNT_SUM  , substr(c.OP_DATE::text,0,5)||'/'
+			||substr(c.OP_DATE::text,5,2)||'/' ||substr(c.OP_DATE::text,7,2) OP_DATE from CHANNEL_FLOW_DAY_ACCUMULATE c where  c.CHANNEL_ID in (
+			${channel_id})
+			and  substr(CAST (c.OP_DATE AS text), 0, 9)=to_char(now()-interval  '1 DAY','YYYYMMDD') and RESIDENT_LEVEL>='E' group by c.CHANNEL_ID,OP_DATE
+	    ]]>
+	</select>
+	
+	<!-- #历史最高人数 -->
+	<select id="HIS_MAX_PEOPLO_COUNT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select people_count, substr(s.OP_TIME::text,0,5)||'/'
+				||substr(s.OP_TIME::text,5,2)||'/'
+				||substr(s.OP_TIME::text,7,2)||' '
+				||substr(s.OP_TIME::text,9,2)||':'
+				||substr(s.OP_TIME::text,11,2) as time_info from  CHANNEL_FLOW_STAT s   where  s.PEOPLE_COUNT=(select max(PEOPLE_COUNT)     from CHANNEL_FLOW_STAT c where  c.CHANNEL_ID in (
+				${channel_id}))  and s.CHANNEL_ID in (${channel_id}) order by s.op_time desc limit 1
+	    ]]>
+	</select>
+	
+	<!-- #昨日滞留人次峰值 -->
+	<select id="YESTERDAY_RESIDENT_MAX_PEOPLO_COUNT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select max(user_count) total_hist_count,CAST (t.OP_TIME AS text) yes_tme_info from CHANNEL_CURRENT_RESIDENT t where  1=1
+			and substr(CAST (t.OP_TIME AS text), 0, 9)=to_char(now()-interval  '1 DAY','YYYYMMDD') 
+			and   (t.RESIDENT_LEVEL>='I'  and t.RESIDENT_LEVEL<='T' )
+			and  t.CHANNEL_ID in (${channel_id})
+			group by yes_tme_info
+	    ]]>
+	</select>
+	
+	<!-- #历史滞留人次峰值 -->
+	<select id="HIS_RESIDENT_MAX_PEOPLO_COUNT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+			select CHANNEL_ID, max_user_count_mon ,substr(s.OP_TIME::text,0,5)||'/'
+				||substr(s.OP_TIME::text,5,2)||'/'
+				||substr(s.OP_TIME::text,7,2)||' '
+				||substr(s.OP_TIME::text,9,2)||':'
+				||substr(s.OP_TIME::text,11,2)  tminfo from (
+			select  t.CHANNEL_ID,max(user_count)::INTEGER max_user_count_mon, OP_TIME    from CHANNEL_HIS_MAX_RESIDENT t where  1=1 
+			and  t.CHANNEL_ID ='${channel_id}' 
+			group by OP_TIME, t.CHANNEL_ID order by 
+			 max_user_count_mon desc limit 1 
+			 ) s
+	    ]]>
+	</select>
+	
+	
+	<!-- 昨日全天累计人数历史数据 导出 -->
+	<select id="YESTERDAY_PEOPLE_COUNT_HISTORY_EXPORT" parameterType="map" resultType="java.util.Map">
+		<![CDATA[
+				select a.*,b.channel_name from (
+				select  c.CHANNEL_ID,sum(ACC_USER_COUNT) ACC_USER_COUNT_SUM  , substr(c.OP_DATE::text,0,5)||'年'
+				||substr(c.OP_DATE::text,5,2)||'月' ||substr(c.OP_DATE::text,7,2)||'日' OP_DATE from CHANNEL_FLOW_DAY_ACCUMULATE c where 
+				 c.CHANNEL_ID in (${channel_id})
+				 and RESIDENT_LEVEL>='E' group by c.CHANNEL_ID,OP_DATE
+				) a ,CHANNEL_INFO b 
+				where a.channel_id=b.id
+		]]>
+	</select>
+	
+</mapper>

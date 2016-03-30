@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>查看历史</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	
+	<meta http-equiv="Pragma" content="no-cache" />   
+	<meta http-equiv="Cache-Control" content="no-cache" />
+	<meta http-equiv="Expires" content="0" />
+	
+    
+ 	<script type="text/javascript" src="/cqcm/common/js/jquery/jquery-1.8.0.min.js"></script>
+	<script type="text/javascript" src="/cqcm/common/js/DateTime.js"></script>
+ 	<script type="text/javascript" src="/cqcm/common/js/Common.js"></script>
+ 	<script type="text/javascript" src="/cqcm/common/echarts/build/dist/echarts.min.js"></script>
+ 	
+ 	</head>
+  
+  <body>
+    <!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+    <div id="main" style="height:80%;width:100%;">
+    
+    </div>
+    
+    <!-- ECharts单文件引入 -->
+    <script type="text/javascript">
+	    var lineChart = echarts.init(document.getElementById('main'));
+	    
+	    /**
+		 * 定义每块区域对应的channel_id
+		 */
+		var cqb_channel_id='457113547';  //重庆北站channel_id
+		var channelArray=[{name:'cqb',channel_id:'457113547',channel_name:'重庆北站'},{name:'ltsBusStation',channel_id:'460940273',channel_name:'龙头寺长途汽车站'},{name:'northPlaza',channel_id:'460942880',channel_name:'北广场'},
+		                 {name:'northRailStation',channel_id:'460941813',channel_name:'火车北站站内'},{name:'southPlazaTransitHub',channel_id:'460941043',channel_name:'南广场枢纽'}];
+		
+		
+		var channel_id="";
+		
+		
+	    /*******************************************************************************
+	     * 生成lineChart数据
+	     * 
+	     * @param json
+	     */
+	    function getLineChartOption(json) {
+	    	//json=$.parseJSON(testJson);
+			
+	    	if (null == json) {
+	    		lineChart.clear();
+	    		return;
+	    	}
+			var name = getParameter("name");
+			
+			var channel_name="";
+	    	for ( var i = 0; i < channelArray.length; i++) {
+	    		if (channelArray[i].name == name) {
+	    			channel_name = channelArray[i].channel_name;
+	    			break;
+	    		}
+	    	}
+	    	
+	    	var data1, data2, data3;
+	    	data1 = new Array();
+	    	data2 = new Array();
+	    	data3 = new Array();
+
+	    	for ( var i = 0; i < json.length; i++) {
+	    		data1.push(typeof (json[i].op_time) == "undefined" ? ""
+	    				: parseDateTimeByMonth(json[i].op_time));
+	    		data2.push(typeof (json[i].current_people_count) == "undefined" ? "0"
+	    				: json[i].current_people_count);
+	    		data3.push(typeof (json[i].current_resident_user_count) == "undefined" ? "0"
+	    						: json[i].current_resident_user_count);
+	    	}
+	    	
+	    	var option = {
+	    		title : {
+	    			text : channel_name
+	    		},
+	    		tooltip : {
+	    			trigger : 'axis'
+	    		},
+	    		color : [ '#00a0e9', '#ff00ff' ],
+	    		legend : {
+	    			data : [ '当前总人数', '滞留人数' ]
+	    		},
+	    	    dataZoom: [
+	    	        {
+	    	            show: true,
+	    	            realtime: true,
+	    	            start: 0,
+	    	            end: 5
+	    	        },
+	    	        {
+	    	        	show: true,
+	    	            realtime: true,
+	    	            type:'inside',
+	    	            start: 0,
+	    	            end: 5
+	    	        }
+	    	    ],
+	    		grid : {
+	    			left : '5%',
+	    			right : '5%',
+	    			bottom : '30%',
+	    			containLabel : true
+	    		},
+	    		xAxis : [ {
+	    			type : 'category',
+	    			boundaryGap : false,
+	    			data : data1,
+	    			axisLabel : {
+	    				rotate : 90,
+	    				interval : 0,
+	    				margin : 5,
+	    				textStyle : {
+	    					fontSize : 12
+	    				}
+	    			}
+	    		} ],
+	    		yAxis : [ {
+	    			type : 'value',
+	    			axisLabel : {
+	    				formatter : '{value}'
+	    			}
+	    		} ],
+	    		series : [ {
+	    			name : '当前总人数',
+	    			type : 'line',
+	    			itemStyle : {
+	    				normal : {
+	    					lineStyle : {
+	    						width : 1
+	    					}
+	    				}
+	    			},markPoint : {
+	                    data : [
+	                            {type : 'max', name: '最大值'},
+	                            {type : 'min', name: '最小值'}
+	                        ]
+	                    },
+	    			data : data2
+	    		}, {
+	    			name : '滞留人数',
+	    			type : 'line',
+	    			itemStyle : {
+	    				normal : {
+	    					lineStyle : {
+	    						width : 1
+	    					}
+	    				}
+	    			},markPoint : {
+	                    data : [
+	                            {type : 'max', name: '最大值'},
+	                            {type : 'min', name: '最小值'}
+	                        ]
+	                    },
+	    			data : data3
+	    		} ]
+	    	};
+
+	    	return option;
+	    }
+	    
+ 	 	
+ 	 	function updateLineChart(json){
+ 		    lineChart.setOption(getLineChartOption(json));
+ 	 	}
+ 	 	
+
+		$(document).ready(function(){
+			
+			var name = getParameter("name");
+			
+	    	for ( var i = 0; i < channelArray.length; i++) {
+	    		if (channelArray[i].name == name) {
+	    			channel_id = channelArray[i].channel_id;
+	    			break;
+	    		}
+	    	}
+	    	
+			queryList({
+				sqlid : 'BaseDataMapper.CURRENT_RESIDENT_LINECHART_HISTORY',
+				channel_id : channel_id
+			}, updateLineChart);
+ 	 	});
+    </script>
+  </body>
+</html>

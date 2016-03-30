@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	
+	<meta http-equiv="Pragma" content="no-cache" />   
+	<meta http-equiv="Cache-Control" content="no-cache" />
+	<meta http-equiv="Expires" content="0" />
+	
+	<link href="/cqcm/cqb/css/Public.css" rel="stylesheet">
+	<script type="text/javascript" src="/cqcm/common/js/jquery/jquery-1.8.0.min.js"></script>
+	<script type="text/javascript" src="/cqcm/common/js/DateTime.js"></script>
+ 	<script type="text/javascript" src="/cqcm/common/js/Common.js"></script>
+ 	<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=yhCODqBHGpGUWOhiDdUbQijd"></script>
+ 	<script type="text/javascript" src="/cqcm/common/echarts/build/dist/echarts.min.js"></script>
+ 	<script type="text/javascript" src="/cqcm/common/js/ComplexCustomOverlay.js"></script>
+	<title>重庆火车北站客流分析系统</title>
+</head>
+<body>
+	
+	<div id="titleBar" class="heard">
+	  <span class="add">重庆北站</span>
+	  <span class="mar_l30 tit30b gray">当前人数:</span><span id="currPNum" class="tit30b yellow">0人 <img id="currPNumImg" src="/cqcm/cqb/images/ico_06.png" class="va3 t_hide"></span>
+	  <span class="mar_l30 tit30b gray">滞留人数:</span><span id="waitPNum" class="tit30b red">0人 <img id="waitPNumImg" src="/cqcm/cqb/images/ico_08.png" class="va3 t_hide"></span>
+	  <div class="gray zlLabel">滞留人数：滞留时长2-24小时之间 </div>
+	  <span id="currTime" class="f_R tit30 gray mar_r20"></span>
+	</div>
+	
+	<div id="allmap"></div>
+	
+	<div id="layer" class="box-shadow">
+	 	  <div class="close"><div class="historyView" onClick="viewHistory()" title="查看历史数据"></div><div class="closeIcon" title="隐藏" onClick="closeLayer()"></div></div>
+		  <div class="sj1" id="lineChartDiv"></div>
+		  <div class="mar_t10">
+		     <div class="bor230 f_L mar_l20 tit26b yellow ">
+			    <p>当前人数</p>
+				<p><label id="rightCurrPNum">0</label>人 <img id="rightCurrPImg" src="/cqcm/cqb/images/ico_06.png" class="va3 t_hide"></p>
+			 </div>
+			 <div class="bor230 f_R mar_r20 tit26b red">
+			    <p>滞留人数</p>
+				<p><label id="rightWaitPNum">0</label>人 <img id="rightWaitPImg" src="/cqcm/cqb/images/ico_08.png" class="va3 t_hide"></p>
+			 </div>
+			 <div class="autoHeight"></div>
+		  </div>
+		  
+		  <div class=" mar_t30">
+		     <div class="f_L mar_l20">
+			    <div class="tit18 gray">外省漫入来源</div>
+				<div class="borsj mar_t15 gray">
+					<div id="pieTable" onmouseover="mouseOverStopSource()" onmouseout="mouseOutStartSource()" class="t_show" style="font-size:14px;">
+				    	<table width="230" border="0" cellspacing="0" cellpadding="0">
+						  <tbody><tr style="border-bottom:1px solid #ccc">
+							<td width="80" height="38" class="table_td_col1">省份</td>
+							<td width="76" align="center">人数</td>
+							<td width="77" align="center">占比</td>
+						  </tr>
+						   <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="80" class="table_td_col1" id="sourceRow1Col0"></td>
+							<td align="center"><span class="yellow" id="sourceRow1Col1"></span></td>
+							<td align="center"><span class="yellow" id="sourceRow1Col2"></span></td>
+						  </tr>
+						    <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="80" class="table_td_col1" id="sourceRow2Col0"></td>
+							<td align="center"><span class="yellow" id="sourceRow2Col1"></span></td>
+							<td align="center"><span class="yellow" id="sourceRow2Col2"></span></td>
+						  </tr>
+						   <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="80" class="table_td_col1" id="sourceRow3Col0"></td>
+							<td align="center"><span class="yellow" id="sourceRow3Col1"></span></td>
+							<td align="center"><span class="yellow" id="sourceRow3Col2"></span></td>
+						  </tr>
+							<tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="80" class="table_td_col1" id="sourceRow4Col0"></td>
+							<td align="center"><span class="red" id="sourceRow4Col1"></span></td>
+							<td align="center"><span class="red" id="sourceRow4Col2"></span></td>
+						  </tr>
+						  <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="80" class="table_td_col1" id="sourceRow5Col0"></td>
+							<td align="center"><span class="red" id="sourceRow5Col1"></span></td>
+							<td align="center"><span class="red" id="sourceRow5Col2"></span></td>
+						  </tr>
+						</tbody></table>
+				    </div>
+				    
+				    <div  id="pieChartDiv" onmouseover="mouseOverStopSource()" onmouseout="mouseOutStartSource()" class="t_hide piechartdiv">
+				    	
+				    </div>
+				</div>
+			 </div>
+			 
+			  <div class=" f_R mar_r20">
+			    <div class="tit18 gray">滞留人数分布</div>
+				<div class="borsj mar_t15 gray">
+				    <div id="distributedTableDiv" onmouseover="mouseOverStop()" onmouseout="mouseOutStart()" class="t_show" style="font-size:14px;">
+				    	<table width="230" border="0" cellspacing="0" cellpadding="0">
+						  <tbody><tr style="border-bottom:1px solid #ccc">
+							<td width="90" height="38" class="table_td_col1">时段(小时)</td>
+							<td width="76" align="center">人数</td>
+							<td width="77" align="center">占比</td>
+						  </tr>
+						   <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="90" class="table_td_col1" >0-2</td>
+							<td align="center"><span class="yellow" id="source0_2">0</span></td>
+							<td align="center"><span class="yellow" id="source0_2_pro">0%</span></td>
+						  </tr>
+						    <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="90" class="table_td_col1">2-4</td>
+							<td align="center"><span class="yellow" id="source2_4">0</span></td>
+							<td align="center"><span class="yellow" id="source2_4_pro">0%</span></td>
+						  </tr>
+						   <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="90" class="table_td_col1">4-8</td>
+							<td align="center"><span class="yellow" id="source4_8">0</span></td>
+							<td align="center"><span class="yellow" id="source4_8_pro">0%</span></td>
+						  </tr>
+							<tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="90" class="table_td_col1">8-24</td>
+							<td align="center"><span class="red" id="source8_24">0</span></td>
+							<td align="center"><span class="red" id="source8_24_pro">0%</span></td>
+						  </tr>
+						  <tr style="border-bottom:1px solid #ccc">
+							<td height="38" width="90" class="table_td_col1">24小时以上</td>
+							<td align="center"><span class="red" id="source24_">0</span></td>
+							<td align="center"><span class="red" id="source24_pro">0%</span></td>
+						  </tr>
+						</tbody></table>
+				    </div>
+				    
+				    <div id="distributedPieChartDiv" onmouseover="mouseOverStop()" onmouseout="mouseOutStart()" class="t_hide piechartdiv">
+				    	
+				    </div>
+				</div>
+			 </div>	 
+		    <div class="autoHeight" id="ffff">
+		    </div>
+		  </div>
+		  
+		   <div class=" mar_t30" style="display:none;">
+		     <div class="f_L mar_l20">
+			    <div class="tit18 gray">滞留人数来源</div>
+				<div class="borsj mar_t15 ">
+					<!-- 
+					--------------------------------------------------------------------------
+				    <div class="f_L ly_l">
+					   <ul>
+					     <li>1.万州9%</li>
+						 <li>2.涪陵8%</li>
+						 <li>3.永川7%</li>
+						 <li>4.潼南6%</li>
+						 <li>5.垫江5%</li>
+					   </ul>
+					</div>
+				    <div class="f_R ly_r"><img src="images/sj3.jpg" width="150"></div>
+				    <div class="autoHeight"></div>
+				    
+				     -->
+				</div>
+			 </div>
+			  
+		    <div class="autoHeight"></div>
+		  </div>
+		  
+		  <!-- 暂时屏蔽  
+		  
+		  <div class="mar_t30 mar_l20 gray" >
+		     <div class="tit16">昨日全天人数:<span class="yellow" id="yesterdayNum">0</span>  <span class="mar_l30">滞留人数:</span><span class="yellow" id="yesterdayWaitNum">0</span></div>
+		     <div class="jdt mar_t10_5">
+			    <div class="jdt_y" id="yesterday_pro" style="width:30%;"></div>
+			 </div>
+			 
+			  <div class="tit16 mar_t15">	 
+			  <span class="f_R mar_r20" id="monthHighTime">2015-11-11 23:23</span>本月最高人数:<span class="red" id="monthNum">0</span>  <span class="mar_l30">滞留人数:</span><span id="monthWaitNum" class="red">0</span>
+			  </div>
+		      <div class="jdt mar_t10_5">
+			    <div class="jdt_r" id="month_pro" style="width:30%;"></div>
+			 </div>
+		  </div>  
+		   -->
+		   
+		   <div class="mar_t30 mar_l20 gray" >
+		   	
+				<div class="top_box mar_t15 gray">
+				
+					<div class="bottom_line" id="time1"></div>
+					<div class="top_title gray">昨日全天累计人数</div>
+					
+					<span class="yellow top_num" id="num1">0</span> 
+				</div>
+				
+				<div class="top_box mar_t15 gray">
+				
+					<div class="bottom_line" id="time2"></div>
+					<div class="top_title gray">历史最高人数</div>
+					
+					<span class="yellow top_num" id="num2">0</span> 
+				</div>
+				
+				<div class="top_box mar_t15 gray margin_right_15" >
+				
+					<div class="bottom_line" id="time4"></div>
+					<div class="top_title gray">历史滞留人数峰值</div>
+					
+					<span class="yellow top_num" id="num4">0</span> 
+				</div>
+			</div>
+		</div>
+	
+		<div class="footer" id="footer">
+			<div style="display:block;height:50px;">
+			</div>
+			<center><p><a href="http://www.10086.cn/aboutus/news/">新闻中心</a><span>&nbsp;|&nbsp;</span><a href="http://www.cq.10086.cn/zhaopin">诚聘英才</a><span>&nbsp;|&nbsp;</span><a href="http://b2b.10086.cn/">采购信息</a><span>&nbsp;|&nbsp;</span><a href="http://www.10086.cn/aboutus/hezuo/">企业合作</a><span>&nbsp;|&nbsp;</span><a href="http://www.10086.cn/web_notice/contact/">联系我们</a><span>&nbsp;|&nbsp;</span><a href="http://www.10086.cn/web_notice/navigation/">站点导航</a><span>&nbsp;|&nbsp;</span><a href="http://labs.chinamobile.com/" target="_blank">中国移动研究院</a><span>&nbsp;|&nbsp;</span><a href="http://www.cmdi.chinamobile.com/" target="_blank">中国移动设计院</a><span>&nbsp;|&nbsp;</span><a href="/svcquery/webSite2014.html">网站地图</a><span>&nbsp;|&nbsp;</span><a href="http://www.10086.cn/web_notice/links/">友情链接</a></p></center>
+			<br/>
+			<center><p><span>&nbsp;</span><span>掌上营业厅：</span><a href="http://wap.10086.cn">wap.10086.cn</a><span>&nbsp;语音自助服务：10086  短信营业厅：10086&nbsp;</span><a href="http://www.10086.cn/support/channel/self_service/">自助终端</a><span>&nbsp;</span><a href="http://www.10086.cn/support/channel/Entity1/">营业厅</a><span>&nbsp;</span><a href="http://www.10086.cn/cmccclient/index.htm">手机营业厅下载</a></p></center>
+				<br/>			
+			<center><p><span>Copyright©1999-2014  中国移动  版权所有 </span></p></center>
+			<br/>
+			<center><p><span>中华人民共和国增值电信业务经营许可证  经营许可证编号：A2.B1.B2-20100001 </span></p></center>
+								<br/>
+			<center><p>		<img name="KNET_seal" src="/cqcm/cqb/images/knetSealLogo.png">
+			
+				<img src="/cqcm/cqb/images/gov.gif" style="vertical-align: top"><a  style="vertical-align: top">京ICP备05002571号</a> </p></center>
+		</div>
+    
+	<script type="text/javascript" src="/cqcm/cqb/js/viewInit.js"></script>
+	<script type="text/javascript" src="/cqcm/cqb/js/viewUpdate.js"></script>
+</body>
+</html>

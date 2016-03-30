@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-module
+  type="WEB"
+  name="cqcm"
+  id="myeclipse.1442923771916"
+  context-root="/cqcm"
+  j2ee-spec="1.7"
+  archive="cqcm.war">
+  <attributes>
+    <attribute name="webrootdir" value="src/main/webapp" />
+  </attributes>
+</project-module>
+
